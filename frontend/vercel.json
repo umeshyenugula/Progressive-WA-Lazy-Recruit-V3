@@ -1,0 +1,8 @@
+{
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/admin/?$", "dest": "/admin/dashboard.html" },
+    { "src": "/superadmin/?$", "dest": "/superadmin/dashboard.html" },
+    { "src": "/.*", "dest": "/index.html" }
+  ]
+}
