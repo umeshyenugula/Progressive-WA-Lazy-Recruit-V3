@@ -1,180 +1,210 @@
 # Club Recruitment Management System
 
-A full-stack web application for managing club recruitment, built with **FastAPI**, **Supabase**, and **Vanilla JS**.
+A full-stack recruitment workflow for clubs and student teams, built with FastAPI, Supabase, and a vanilla JavaScript frontend.
 
----
+## Overview
+
+This project manages the full recruitment lifecycle: candidate intake, domain assignment, admin evaluations, shortlisting, exports, and recovery imports. It is designed to work as an offline-first app for admins, with local caching, sync support, and streaming upload feedback.
 
 ## Tech Stack
 
-| Layer     | Technology                          |
-|-----------|-------------------------------------|
-| Frontend  | HTML5, CSS3, Vanilla JavaScript     |
-| Backend   | FastAPI (Python 3.11+)              |
-| Database  | Supabase (PostgreSQL + RLS)         |
-| Auth      | Supabase Auth + JWT                 |
-| Excel     | openpyxl + pandas                   |
+| Layer | Technology |
+|---|---|
+| Frontend | HTML5, CSS3, Vanilla JavaScript |
+| Backend | FastAPI on Python 3.11+ |
+| Database | Supabase PostgreSQL with RLS |
+| Auth | Supabase Auth + JWT |
+| Excel | openpyxl, pandas |
+| Offline cache | IndexedDB + service worker |
 
----
+## Key Features
+
+- Super admin and admin dashboards with role-based access
+- Candidate CRUD, bulk status updates, and Excel import/export
+- Domain and criteria management
+- Multi-admin domain assignment
+- Admin evaluation forms with per-criteria scoring
+- Offline-first local cache with background sync
+- Recovery Excel import for restoring candidate and evaluation data
+- Live upload feedback for Excel imports, including row-by-row progress
 
 ## Project Structure
 
-```
-club-recruitment/
-├── supabase_schema.sql          # Run this in Supabase SQL Editor
+```text
+club-recruitment-v2-fixed/
+├── supabase_schema.sql
+├── CHANGES.md
+├── README.md
 ├── backend/
-│   ├── main.py                  # FastAPI app entry point
-│   ├── config.py                # Settings / env vars
+│   ├── main.py
+│   ├── config.py
 │   ├── requirements.txt
-│   ├── .env.example             # Copy to .env and fill in values
-│   ├── routers/
-│   │   ├── auth.py              # Login / logout
-│   │   ├── candidates.py        # Candidate CRUD, assign, export
-│   │   ├── evaluations.py       # Submit / update evaluations
-│   │   ├── admins.py            # Admin management (superadmin only)
-│   │   ├── domains.py           # Domain & criteria management
-│   │   └── upload.py            # Excel parsing & bulk import
+│   ├── seed.py
 │   ├── models/
-│   │   └── schemas.py           # Pydantic request/response models
+│   │   ├── __init__.py
+│   │   └── schemas.py
+│   ├── routers/
+│   │   ├── admins.py
+│   │   ├── auth.py
+│   │   ├── candidates.py
+│   │   ├── domains.py
+│   │   ├── evaluations.py
+│   │   ├── shortlist.py
+│   │   ├── sync.py
+│   │   └── upload.py
 │   └── services/
-│       ├── supabase_client.py   # Supabase client singleton
-│       ├── auth_service.py      # JWT decode + role guards
-│       └── excel_parser.py      # Excel → candidate records
+│       ├── auth_service.py
+│       ├── excel_parser.py
+│       └── supabase_client.py
 └── frontend/
-    ├── index.html               # Login page
+    ├── index.html
+    ├── sw.js
+    ├── vercel.json
     ├── css/
-    │   ├── main.css             # Design system, layout, components
-    │   ├── tables.css           # Table & pagination styles
-    │   └── login.css            # Login page styles
+    │   ├── login.css
+    │   ├── main.css
+    │   └── tables.css
     ├── js/
-    │   ├── api.js               # Fetch wrapper + API modules
-    │   ├── utils.js             # Toast, DOM helpers, pagination
-    │   └── sidebar.js           # Dynamic sidebar renderer
-    ├── superadmin/
-    │   ├── dashboard.html       # Stats overview + Excel upload
-    │   ├── candidates.html      # Full candidate table + bulk actions
-    │   ├── admins.html          # Create & manage admins
-    │   └── domains.html         # Domains + criteria management
-    └── admin/
-        ├── dashboard.html       # Domain overview + my progress
-        └── candidates.html      # Evaluate assigned candidates
+    │   ├── api.js
+    │   ├── sidebar.js
+    │   └── utils.js
+    ├── admin/
+    │   ├── candidates.html
+    │   └── dashboard.html
+    └── superadmin/
+        ├── admins.html
+        ├── candidates.html
+        ├── dashboard.html
+        └── domains.html
 ```
 
----
+## Setup
 
-## Setup Instructions
+### 1. Supabase
 
-### 1. Supabase Setup
+1. Create a project in Supabase.
+2. Open SQL Editor and run [supabase_schema.sql](supabase_schema.sql).
+3. Go to Authentication settings and configure your site URL.
+4. Create the first super admin user in Supabase Auth.
+5. Insert that user into `public.users` with role `superadmin`.
+6. Copy these values from Supabase settings:
+   - Project URL
+   - anon key
+   - service_role key
+   - JWT secret
 
-1. Create a new project at [supabase.com](https://supabase.com)
-2. Go to **SQL Editor** → paste and run `supabase_schema.sql`
-3. In **Authentication → Settings**, configure your site URL
-4. Create the first **Super Admin** user:
-   - Go to **Authentication → Users** → Invite user (e.g. `superadmin@club.com`)
-   - After user is created, note the UUID
-   - Run in SQL Editor:
-     ```sql
-     INSERT INTO public.users (id, email, full_name, role)
-     VALUES ('PASTE-UUID-HERE', 'superadmin@club.com', 'Super Admin', 'superadmin');
-     ```
-5. Collect from **Settings → API**:
-   - `Project URL`
-   - `anon` key
-   - `service_role` key
-   - `JWT Secret` (from **Settings → API → JWT Settings**)
-
-### 2. Backend Setup
+### 2. Backend
 
 ```bash
 cd backend
-cp .env.example .env
-# Edit .env with your Supabase credentials
+copy .env.example .env
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-The API will be available at `http://localhost:8000`  
+The API runs at `http://localhost:8000`.
+
 Interactive docs: `http://localhost:8000/docs`
 
-### 3. Frontend Setup
+### 3. Frontend
 
-Serve the `frontend/` directory with any static server:
+Serve the `frontend/` folder with any static server:
 
 ```bash
-# Using Python
 cd frontend
 python -m http.server 5500
-
-# Using VS Code Live Server (recommended)
-# Right-click index.html → Open with Live Server
 ```
 
-Open `http://localhost:5500` in your browser.
+Then open `http://localhost:5500`.
 
-> **Note:** Make sure `CORS_ORIGINS` in `.env` includes your frontend URL.
+If you use VS Code Live Server, open `frontend/index.html` directly.
 
----
+### 4. Environment Variables
 
-## Usage Guide
+Configure the backend `.env` with your Supabase values and CORS origins. At minimum, make sure the frontend origin is allowed.
 
-### Super Admin Workflow
+## Typical Workflows
 
-1. **Login** at `index.html` with superadmin credentials
-2. **Create Domains** → `Domains & Criteria` page → Add domains (e.g. "Web Dev", "AI/ML")
-3. **Add Criteria** → Under each domain, add evaluation criteria (e.g. "Technical", "Communication", max score 10)
-4. **Create Admins** → `Admins` page → Add admin users and assign them to domains
-5. **Upload Candidates** → Dashboard → Upload Excel button
-6. **Assign Candidates** → `Candidates` page → Select candidates → Assign to Domain
-7. **Review Results** → View all evaluations and marks given by admins
-8. **Shortlist/Select** → Bulk-select candidates → Mark as Shortlisted / Selected
-9. **Export** → Download shortlisted candidates as Excel
+### Super Admin
 
-### Admin Workflow
+1. Log in from the root login page.
+2. Create domains and evaluation criteria.
+3. Create admins and assign them to domains.
+4. Import candidates from Excel.
+5. Review evaluations and shortlist candidates.
+6. Export the shortlisted list when ready.
 
-1. **Login** with admin credentials (created by Super Admin)
-2. **Dashboard** shows your domain's candidates and evaluation criteria
-3. **Candidates** page → browse, search, filter your assigned candidates
-4. Click **Evaluate** on any candidate → fill in scores per criteria + remarks
-5. Scores are saved and visible to super admin immediately
+### Admin
 
----
+1. Log in with an admin account.
+2. Review assigned domains and candidates.
+3. Open a candidate and submit evaluations.
+4. Save scores and remarks per domain.
 
-## Excel File Format
+## Excel Import Format
 
-Upload `.xlsx` files with these column headers (case-insensitive):
+The candidate upload accepts `.xlsx` and `.xls` files. Column names are matched case-insensitively.
+
+Required columns:
 
 | Column | Required | Notes |
-|--------|----------|-------|
-| Name | ✅ | Full name |
-| Email | ✅ | Must be unique |
-| Phone | | Mobile number |
-| Roll Number | | Student roll no |
-| Branch | | e.g. CSE, ECE |
-| Section | | e.g. A, B |
-| Year | | e.g. 2nd Year |
-| Interested Domains | | Comma-separated: "Web Dev, AI/ML" |
-| Skills | | Technologies, tools |
-| Experience | | Projects, internships |
+|---|---|---|
+| Name | Yes | Candidate full name |
+| Email | Yes | Must be unique |
 
-Any extra columns are stored in `extra_data` (JSONB field).
+Common optional columns:
 
----
+| Column | Notes |
+|---|---|
+| Phone | Mobile number |
+| Roll Number | Student roll number |
+| Branch | CSE, ECE, MECH, etc. |
+| Section | A, B, C, etc. |
+| Year | Academic year |
+| Interested Domains | Comma-separated names |
+| Skills | Technologies and tools |
+| Experience | Projects, internships, clubs |
 
-## API Endpoints
+Any additional columns are stored in `extra_data`.
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
+## Recovery Import
+
+The recovery import is intended for backup files generated by the app. It restores:
+
+- Participants
+- Evaluations
+
+It now streams live row-by-row progress during upload and processing.
+
+## API Highlights
+
+| Method | Endpoint | Access | Purpose |
+|---|---|---|---|
 | POST | `/api/auth/login` | Public | Login |
 | GET | `/api/candidates/` | Admin+ | List candidates |
+| POST | `/api/candidates/` | Admin+ | Create candidate |
 | PATCH | `/api/candidates/{id}` | Super Admin | Update candidate |
-| POST | `/api/candidates/assign` | Super Admin | Assign to domain |
-| POST | `/api/candidates/bulk-status` | Super Admin | Bulk status update |
-| GET | `/api/candidates/export/shortlisted` | Super Admin | Download Excel |
-| POST | `/api/evaluations/` | Admin+ | Submit evaluation |
-| PATCH | `/api/evaluations/{id}` | Admin+ | Update evaluation |
-| GET | `/api/admins/` | Super Admin | List admins |
-| POST | `/api/admins/` | Super Admin | Create admin |
+| POST | `/api/candidates/assign` | Super Admin | Assign domains |
 | GET | `/api/domains/` | Admin+ | List domains |
-| POST | `/api/domains/criteria` | Super Admin | Add criteria |
-| POST | `/api/upload/excel` | Super Admin | Upload & parse Excel |
+| POST | `/api/domains/criteria` | Super Admin | Create criteria |
+| POST | `/api/evaluations/` | Admin+ | Save evaluation |
+| GET | `/api/admins/` | Super Admin | List admins |
+| POST | `/api/upload/excel` | Super Admin | Import candidates from Excel |
+| POST | `/api/upload/recovery/import` | Super Admin | Restore backup Excel |
 
-Full interactive docs: `http://localhost:8000/docs`
+## Notes
+
+- The frontend uses local IndexedDB caching for offline support.
+- Admin pages refresh data in the background at a slower interval to reduce unnecessary calls.
+- Excel uploads now show live progress in a compact modal.
+- See [CHANGES.md](CHANGES.md) for the v2 migration notes and schema changes.
+
+## Troubleshooting
+
+- If the frontend cannot reach the API, verify `CORS_ORIGINS` in the backend `.env`.
+- If uploads fail, confirm that Supabase credentials and RLS policies are set correctly.
+- If login works but data is missing, refresh the cache or re-run the initial offline setup.
+
+## Interactive Docs
+
+FastAPI docs: `http://localhost:8000/docs`
